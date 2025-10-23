@@ -444,9 +444,9 @@ async function sendToEtcimWindow(jsonPath) {
   }
 
   // Escape the path for PowerShell
-  const escapedPath = jsonPath.replace(/\\/g, '\\\\');
+  const escapedPath = jsonPath.replace(/\\/g, '\\\\').replace(/'/g, "''");
 
-  // Create PowerShell script with proper COPYDATASTRUCT
+  // Create PowerShell script with proper COPYDATASTRUCT using ANSI encoding for VFP9 compatibility
   const psScript = `
 Add-Type @"
   using System;
@@ -460,23 +460,26 @@ Add-Type @"
   }
 
   public class WinAPI {
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    [DllImport("user32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr FindWindowA(string lpClassName, string lpWindowName);
 
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, ref COPYDATASTRUCT lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+    public static extern IntPtr SendMessageA(IntPtr hWnd, uint Msg, IntPtr wParam, ref COPYDATASTRUCT lParam);
   }
 "@
 
 try {
-  $$hwnd = [WinAPI]::FindWindow($$null, "ETCIM20")
+  $$hwnd = [WinAPI]::FindWindowA($$null, "ETCIM20")
   if ($$hwnd -eq [IntPtr]::Zero) {
-    Write-Error "ETCIM20 window not found"
+    Write-Output "ETCIM20 window not found. Window handle: $$hwnd"
     exit 1
   }
 
-  $$path = "${escapedPath}"
-  $$bytes = [System.Text.Encoding]::Unicode.GetBytes($$path)
+  Write-Output "Found ETCIM20 window: $$hwnd"
+
+  $$path = '${escapedPath}'
+  # Use ANSI encoding for VFP9 compatibility
+  $$bytes = [System.Text.Encoding]::Default.GetBytes($$path + [char]0)
   $$ptr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($$bytes.Length)
   [System.Runtime.InteropServices.Marshal]::Copy($$bytes, 0, $$ptr, $$bytes.Length)
 
@@ -486,13 +489,17 @@ try {
   $$cds.lpData = $$ptr
 
   $$WM_COPYDATA = 0x004A
-  $$result = [WinAPI]::SendMessage($$hwnd, $$WM_COPYDATA, [IntPtr]::Zero, [ref]$$cds)
+  Write-Output "Sending message with path: $$path"
+  Write-Output "Data size: $$($$cds.cbData) bytes"
+
+  $$result = [WinAPI]::SendMessageA($$hwnd, $$WM_COPYDATA, [IntPtr]::Zero, [ref]$$cds)
 
   [System.Runtime.InteropServices.Marshal]::FreeHGlobal($$ptr)
 
-  Write-Output "Message sent to ETCIM20 (result: $$result)"
+  Write-Output "Message sent to ETCIM20. Result: $$result"
 } catch {
-  Write-Error $$_.Exception.Message
+  Write-Output "Error: $$($$_.Exception.Message)"
+  Write-Output "Stack trace: $$($$_.Exception.StackTrace)"
   exit 1
 }
 `;
