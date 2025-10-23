@@ -42,10 +42,41 @@ document.getElementById('saveSettings').addEventListener('click', async () => {
         openAIKey: document.getElementById('openAIKey').value
     };
 
+    // Validate API key if OpenAI is enabled
+    if (settings.useOpenAI && settings.openAIKey) {
+        showStatus('Validating API key...', 'info');
+        try {
+            const isValid = await validateAPIKey(settings.openAIKey);
+            if (!isValid) {
+                showStatus('Invalid API key. Please check and try again.', 'error');
+                return;
+            }
+        } catch (error) {
+            showStatus('Could not validate API key: ' + error.message, 'error');
+            return;
+        }
+    }
+
     await ipcRenderer.invoke('save-settings', settings);
     currentSettings = settings;
     showStatus('Settings saved successfully!', 'success');
 });
+
+async function validateAPIKey(apiKey) {
+    try {
+        const openai = new OpenAI({
+            apiKey: apiKey,
+            dangerouslyAllowBrowser: true
+        });
+
+        // Make a minimal API call to test the key
+        await openai.models.list();
+        return true;
+    } catch (error) {
+        console.error('API key validation error:', error);
+        return false;
+    }
+}
 
 // Dropzone handlers
 const dropzone = document.getElementById('dropzone');
