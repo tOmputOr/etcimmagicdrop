@@ -421,9 +421,62 @@ ipcMain.handle('save-etcim-json', async (event, data) => {
     const rootFolder = store.get('rootFolder', path.join(app.getPath('documents'), 'ImageDrop'));
     const etcimPath = path.join(rootFolder, 'etcim.json');
     await fs.writeFile(etcimPath, JSON.stringify(data, null, 2));
+
+    // Send message to ETCIM20 window
+    try {
+      await sendToEtcimWindow(etcimPath);
+    } catch (error) {
+      console.error('Error sending to ETCIM20:', error);
+      // Continue even if sending fails
+    }
+
     return etcimPath;
   } catch (error) {
     console.error('Save etcim.json error:', error);
     throw error;
   }
 });
+
+// Function to send Windows message to ETCIM20
+async function sendToEtcimWindow(jsonPath) {
+  if (process.platform !== 'win32') {
+    throw new Error('SendMessage only works on Windows');
+  }
+
+  // Create PowerShell script to find window and send message
+  const psScript = `
+    Add-Type @"
+      using System;
+      using System.Runtime.InteropServices;
+      using System.Text;
+
+      public class WinAPI {
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
+      }
+"@
+
+    $hwnd = [WinAPI]::FindWindow($null, "ETCIM20")
+    if ($hwnd -eq [IntPtr]::Zero) {
+      Write-Error "ETCIM20 window not found"
+      exit 1
+    }
+
+    $WM_COPYDATA = 0x004A
+    [WinAPI]::SendMessage($hwnd, $WM_COPYDATA, [IntPtr]::Zero, "${jsonPath.replace(/\\/g, '\\\\')}")
+    Write-Output "Message sent to ETCIM20"
+  `;
+
+  return new Promise((resolve, reject) => {
+    exec(`powershell -Command "${psScript.replace(/"/g, '\\"')}"`, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`Failed to send to ETCIM20: ${stderr || error.message}`));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
+}
