@@ -250,13 +250,20 @@ button:active {
 }
 
 /* Viewer Styles */
+body:has(.viewer-container) {
+    padding: 0;
+    overflow: hidden;
+    display: block;
+}
+
 .viewer-container {
     width: 100vw;
     height: 100vh;
     margin: 0;
     padding: 20px;
     box-sizing: border-box;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .viewer-header {
