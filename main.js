@@ -415,3 +415,15 @@ ipcMain.handle('get-folder-structure', async () => {
     return { folders: [] };
   }
 });
+
+ipcMain.handle('save-etcim-json', async (event, data) => {
+  try {
+    const rootFolder = store.get('rootFolder', path.join(app.getPath('documents'), 'ImageDrop'));
+    const etcimPath = path.join(rootFolder, 'etcim.json');
+    await fs.writeFile(etcimPath, JSON.stringify(data, null, 2));
+    return etcimPath;
+  } catch (error) {
+    console.error('Save etcim.json error:', error);
+    throw error;
+  }
+});

@@ -39,6 +39,7 @@ function displayFolders(folders) {
         }
 
         card.innerHTML = `
+            <div class="folder-delete-icon" title="Delete folder">×</div>
             ${thumbnailHtml}
             <div class="folder-card-content">
                 <h3>${escapeHtml(folder.name)}</h3>
@@ -46,7 +47,28 @@ function displayFolders(folders) {
                 <div class="folder-date">${formatDate(folder.created)}</div>
             </div>
         `;
-        card.addEventListener('click', () => openFolder(folder));
+
+        // Add click handler for opening folder
+        card.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('folder-delete-icon')) {
+                openFolder(folder);
+            }
+        });
+
+        // Add delete handler
+        const deleteIcon = card.querySelector('.folder-delete-icon');
+        deleteIcon.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete folder "${folder.name}" and all its contents?`)) {
+                try {
+                    await ipcRenderer.invoke('delete-folder', folder.path);
+                    loadFolders();
+                } catch (error) {
+                    alert('Error deleting folder: ' + error.message);
+                }
+            }
+        });
+
         grid.appendChild(card);
     });
 }
@@ -142,7 +164,30 @@ function formatDate(date) {
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 }
 
+async function sendToEtcim() {
+    try {
+        const folderStructure = await ipcRenderer.invoke('get-folder-structure');
+        const etcimData = {
+            timestamp: new Date().toISOString(),
+            folders: folderStructure.folders.map(folder => ({
+                name: folder.name,
+                path: folder.path,
+                created: folder.created,
+                fileCount: folder.files ? folder.files.length : 0,
+                files: folder.files || []
+            }))
+        };
+
+        // Save to etcim.json in root folder
+        const etcimPath = await ipcRenderer.invoke('save-etcim-json', etcimData);
+        alert(`Etcim data exported successfully to:\n${etcimPath}`);
+    } catch (error) {
+        alert('Error exporting to Etcim: ' + error.message);
+    }
+}
+
 // Event listeners
+document.getElementById('sendToEtcim').addEventListener('click', sendToEtcim);
 document.getElementById('refreshFolders').addEventListener('click', loadFolders);
 document.getElementById('backToFolders').addEventListener('click', backToFolders);
 document.getElementById('deleteFolder').addEventListener('click', deleteCurrentFolder);

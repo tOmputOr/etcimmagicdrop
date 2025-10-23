@@ -251,9 +251,12 @@ button:active {
 
 /* Viewer Styles */
 .viewer-container {
-    max-width: 100%;
+    width: 100vw;
+    height: 100vh;
     margin: 0;
     padding: 20px;
+    box-sizing: border-box;
+    overflow: auto;
 }
 
 .viewer-header {
@@ -263,9 +266,14 @@ button:active {
     margin-bottom: 30px;
 }
 
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
 .folders-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -277,6 +285,7 @@ button:active {
     cursor: pointer;
     transition: all 0.3s;
     border: 2px solid #eee;
+    position: relative;
 }
 
 .folder-thumbnail {
@@ -304,7 +313,36 @@ button:active {
 .folder-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    border-color: #667eea;
+    border-color: #DC143C;
+}
+
+.folder-delete-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(220, 20, 60, 0.9);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 10;
+    transition: all 0.3s;
+    opacity: 0;
+}
+
+.folder-card:hover .folder-delete-icon {
+    opacity: 1;
+}
+
+.folder-delete-icon:hover {
+    background: #8B0000;
+    transform: scale(1.1);
 }
 
 .folder-card h3 {
