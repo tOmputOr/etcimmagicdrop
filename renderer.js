@@ -2,10 +2,12 @@ const { ipcRenderer } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');
-const pdf = require('pdf-poppler');
+const { Poppler } = require('node-poppler');
 const mammoth = require('mammoth');
 const ExcelJS = require('exceljs');
 const OpenAI = require('openai');
+
+const poppler = new Poppler();
 
 let currentSettings = {};
 
@@ -148,24 +150,28 @@ async function processPDF(filePath) {
     const outputDir = path.join(require('os').tmpdir(), 'pdf-convert-' + Date.now());
     await fs.mkdir(outputDir, { recursive: true });
 
-    const opts = {
-        format: 'png',
-        out_dir: outputDir,
-        out_prefix: 'page',
-        page: null
-    };
+    try {
+        const outputFile = path.join(outputDir, 'page');
 
-    await pdf.convert(filePath, opts);
+        // Convert PDF to PNG using node-poppler
+        await poppler.pdfToCairo(filePath, outputFile, {
+            pngFile: true,
+            singleFile: false
+        });
 
-    const files = await fs.readdir(outputDir);
-    for (const file of files) {
-        if (file.endsWith('.png')) {
-            const buffer = await fs.readFile(path.join(outputDir, file));
-            await saveImage(buffer, 'pdf-page');
+        const files = await fs.readdir(outputDir);
+        for (const file of files) {
+            if (file.endsWith('.png')) {
+                const buffer = await fs.readFile(path.join(outputDir, file));
+                await saveImage(buffer, 'pdf-page');
+            }
         }
+    } catch (error) {
+        console.error('PDF conversion error:', error);
+        showStatus('PDF conversion requires Poppler to be installed. See README.', 'error');
+    } finally {
+        await fs.rm(outputDir, { recursive: true });
     }
-
-    await fs.rm(outputDir, { recursive: true });
 }
 
 async function processWord(filePath) {
