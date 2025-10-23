@@ -60,16 +60,41 @@ npm start
 
 ## Configuration
 
-### Settings
+### Company-Wide Deployment (Recommended)
+
+For company use with a shared API key:
+
+1. Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` and add your company OpenAI API key:
+```
+OPENAI_API_KEY=sk-your-company-key-here
+```
+
+3. The `.env` file is in `.gitignore` and will NOT be committed to git
+4. When deployed, OpenAI features are automatically enabled
+5. Users cannot disable or change the API key (company-controlled)
+
+**Security Notes:**
+- Never commit `.env` to version control
+- Distribute `.env` separately via secure channels (password manager, secure file share)
+- Each installation needs the `.env` file placed in the app's root directory
+
+### Individual User Settings
+
+If no company key is set, users can:
 1. **Root Folder**: Select where images will be saved
 2. **OpenAI Integration**:
    - Check "Use OpenAI for descriptions"
-   - Enter your OpenAI API key
-   - Get your API key from: https://platform.openai.com/api-keys
+   - Enter their own OpenAI API key
+   - Get API key from: https://platform.openai.com/api-keys
 
 ### Default Settings
 - Root folder: `Documents/ImageDrop`
-- OpenAI: Disabled by default
+- OpenAI: Auto-enabled if company key exists, otherwise disabled
 
 ## Usage
 

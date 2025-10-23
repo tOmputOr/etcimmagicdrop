@@ -14,69 +14,12 @@ loadSettings();
 
 async function loadSettings() {
     currentSettings = await ipcRenderer.invoke('get-settings');
-    document.getElementById('rootFolder').value = currentSettings.rootFolder;
-    document.getElementById('useOpenAI').checked = currentSettings.useOpenAI;
-    document.getElementById('openAIKey').value = currentSettings.openAIKey;
-    toggleAPIKeyField();
 }
 
-// Settings handlers
-document.getElementById('useOpenAI').addEventListener('change', toggleAPIKeyField);
-
-function toggleAPIKeyField() {
-    const apiKeyRow = document.getElementById('apiKeyRow');
-    apiKeyRow.style.display = document.getElementById('useOpenAI').checked ? 'block' : 'none';
-}
-
-document.getElementById('selectFolder').addEventListener('click', async () => {
-    const folder = await ipcRenderer.invoke('select-folder');
-    if (folder) {
-        document.getElementById('rootFolder').value = folder;
-    }
+// Settings button
+document.getElementById('openSettings').addEventListener('click', () => {
+    ipcRenderer.invoke('open-settings');
 });
-
-document.getElementById('saveSettings').addEventListener('click', async () => {
-    const settings = {
-        rootFolder: document.getElementById('rootFolder').value,
-        useOpenAI: document.getElementById('useOpenAI').checked,
-        openAIKey: document.getElementById('openAIKey').value
-    };
-
-    // Validate API key if OpenAI is enabled
-    if (settings.useOpenAI && settings.openAIKey) {
-        showStatus('Validating API key...', 'info');
-        try {
-            const isValid = await validateAPIKey(settings.openAIKey);
-            if (!isValid) {
-                showStatus('Invalid API key. Please check and try again.', 'error');
-                return;
-            }
-        } catch (error) {
-            showStatus('Could not validate API key: ' + error.message, 'error');
-            return;
-        }
-    }
-
-    await ipcRenderer.invoke('save-settings', settings);
-    currentSettings = settings;
-    showStatus('Settings saved successfully!', 'success');
-});
-
-async function validateAPIKey(apiKey) {
-    try {
-        const openai = new OpenAI({
-            apiKey: apiKey,
-            dangerouslyAllowBrowser: true
-        });
-
-        // Make a minimal API call to test the key
-        await openai.models.list();
-        return true;
-    } catch (error) {
-        console.error('API key validation error:', error);
-        return false;
-    }
-}
 
 // Dropzone handlers
 const dropzone = document.getElementById('dropzone');
@@ -147,26 +90,13 @@ document.getElementById('captureScreen').addEventListener('click', async () => {
 
 document.getElementById('snippingTool').addEventListener('click', async () => {
     try {
-        showStatus('Opening Snipping Tool... Please save to clipboard', 'info');
-        await ipcRenderer.invoke('open-snipping-tool', currentSettings.rootFolder);
-
-        // Monitor clipboard for new image
-        let attempts = 0;
-        const checkClipboard = setInterval(async () => {
-            attempts++;
-            const base64Image = await ipcRenderer.invoke('get-clipboard-image');
-            if (base64Image) {
-                clearInterval(checkClipboard);
-                const buffer = Buffer.from(base64Image, 'base64');
-                await saveImage(buffer, 'snippet');
-                showStatus('Snippet saved successfully!', 'success');
-            } else if (attempts > 60) {
-                clearInterval(checkClipboard);
-                showStatus('Clipboard monitoring timed out', 'error');
-            }
-        }, 1000);
+        showStatus('Capturing screen...', 'info');
+        const base64Image = await ipcRenderer.invoke('capture-screen');
+        const buffer = Buffer.from(base64Image, 'base64');
+        await saveImage(buffer, 'screen-capture');
+        showStatus('Screen captured successfully!', 'success');
     } catch (error) {
-        showStatus('Error opening Snipping Tool: ' + error.message, 'error');
+        showStatus('Error capturing screen: ' + error.message, 'error');
     }
 });
 
@@ -332,6 +262,15 @@ async function saveImage(buffer, baseName) {
         } catch (error) {
             console.error('Error saving description:', error);
         }
+    }
+
+    // Update JSON tracking
+    try {
+        const files = await fs.readdir(folderPath);
+        const imageFiles = files.filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.jpeg'));
+        await ipcRenderer.invoke('update-folder-structure', folderPath, folderName, imageFiles);
+    } catch (error) {
+        console.error('Error updating folder structure:', error);
     }
 }
 

@@ -29,10 +29,22 @@ function displayFolders(folders) {
     folders.forEach(folder => {
         const card = document.createElement('div');
         card.className = 'folder-card';
+
+        // Create thumbnail or placeholder
+        let thumbnailHtml = '';
+        if (folder.firstImage) {
+            thumbnailHtml = `<div class="folder-thumbnail"><img src="file:///${folder.firstImage.replace(/\\/g, '/')}" alt="Preview"></div>`;
+        } else {
+            thumbnailHtml = `<div class="folder-thumbnail">📁</div>`;
+        }
+
         card.innerHTML = `
-            <h3>${escapeHtml(folder.name)}</h3>
-            <div class="folder-info">${folder.imageCount} image(s)</div>
-            <div class="folder-date">${formatDate(folder.created)}</div>
+            ${thumbnailHtml}
+            <div class="folder-card-content">
+                <h3>${escapeHtml(folder.name)}</h3>
+                <div class="folder-info">${folder.imageCount} image(s)</div>
+                <div class="folder-date">${formatDate(folder.created)}</div>
+            </div>
         `;
         card.addEventListener('click', () => openFolder(folder));
         grid.appendChild(card);

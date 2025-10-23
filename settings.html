@@ -1,0 +1,48 @@
+ly to rectangle snippet mode (Windows+Shift+S<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container" style="max-width: 700px;">
+        <h1>⚙️ Settings</h1>
+
+        <div class="settings-section">
+            <div class="setting-row">
+                <label>Root Folder:</label>
+                <div class="folder-select">
+                    <input type="text" id="rootFolder" readonly>
+                    <button id="selectFolder" class="btn-secondary">Browse</button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label>
+                    <input type="checkbox" id="useOpenAI">
+                    Use OpenAI for descriptions
+                </label>
+            </div>
+
+            <div class="setting-row" id="apiKeyRow" style="display: none;">
+                <label>OpenAI API Key:</label>
+                <input type="password" id="openAIKey" placeholder="sk-...">
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                    🔒 Your API key is stored securely on your local machine only
+                </small>
+            </div>
+
+            <div class="setting-row">
+                <button id="saveSettings" class="btn-primary">Save Settings</button>
+                <button id="closeSettings" class="btn-secondary" style="margin-top: 10px;">Close</button>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script src="settings-renderer.js"></script>
+</body>
+</html>

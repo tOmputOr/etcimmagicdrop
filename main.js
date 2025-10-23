@@ -4,12 +4,117 @@ const fs = require('fs').promises;
 const Store = require('electron-store');
 const { exec } = require('child_process');
 const { promisify } = require('util');
+require('dotenv').config();
 
 const execAsync = promisify(exec);
 const store = new Store();
 
+// Company API key from environment variable
+const COMPANY_OPENAI_KEY = process.env.OPENAI_API_KEY;
+
+// JSON storage paths in user folder
+const USER_DATA_PATH = app.getPath('userData');
+const FOLDER_STRUCTURE_PATH = path.join(USER_DATA_PATH, 'folder-structure.json');
+const LAST_PROCESSED_PATH = path.join(USER_DATA_PATH, 'last-processed.json');
+
+// Initialize JSON files
+async function initializeJSONFiles() {
+  try {
+    // Create folder-structure.json if it doesn't exist
+    try {
+      await fs.access(FOLDER_STRUCTURE_PATH);
+    } catch {
+      await fs.writeFile(FOLDER_STRUCTURE_PATH, JSON.stringify({ folders: [] }, null, 2));
+    }
+
+    // Create last-processed.json if it doesn't exist
+    try {
+      await fs.access(LAST_PROCESSED_PATH);
+    } catch {
+      await fs.writeFile(LAST_PROCESSED_PATH, JSON.stringify({ lastFolder: null, lastFiles: [] }, null, 2));
+    }
+  } catch (error) {
+    console.error('Error initializing JSON files:', error);
+  }
+}
+
+// Read folder structure
+async function readFolderStructure() {
+  try {
+    const data = await fs.readFile(FOLDER_STRUCTURE_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading folder structure:', error);
+    return { folders: [] };
+  }
+}
+
+// Write folder structure
+async function writeFolderStructure(structure) {
+  try {
+    await fs.writeFile(FOLDER_STRUCTURE_PATH, JSON.stringify(structure, null, 2));
+  } catch (error) {
+    console.error('Error writing folder structure:', error);
+  }
+}
+
+// Read last processed
+async function readLastProcessed() {
+  try {
+    const data = await fs.readFile(LAST_PROCESSED_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading last processed:', error);
+    return { lastFolder: null, lastFiles: [] };
+  }
+}
+
+// Write last processed
+async function writeLastProcessed(data) {
+  try {
+    await fs.writeFile(LAST_PROCESSED_PATH, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error writing last processed:', error);
+  }
+}
+
+// Add folder to structure
+async function addFolderToStructure(folderPath, folderName, files) {
+  const structure = await readFolderStructure();
+
+  const folderEntry = {
+    path: folderPath,
+    name: folderName,
+    created: new Date().toISOString(),
+    files: files.map(f => ({
+      name: f,
+      path: path.join(folderPath, f),
+      created: new Date().toISOString()
+    }))
+  };
+
+  // Check if folder already exists, update it
+  const existingIndex = structure.folders.findIndex(f => f.path === folderPath);
+  if (existingIndex >= 0) {
+    structure.folders[existingIndex] = folderEntry;
+  } else {
+    structure.folders.unshift(folderEntry);
+  }
+
+  await writeFolderStructure(structure);
+
+  // Update last processed
+  await writeLastProcessed({
+    lastFolder: folderPath,
+    lastFolderName: folderName,
+    lastFiles: files.map(f => path.join(folderPath, f)),
+    timestamp: new Date().toISOString()
+  });
+}
+
 let mainWindow;
 let viewerWindow;
+let settingsWindow;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -30,6 +135,31 @@ function createMainWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+function createSettingsWindow() {
+  if (settingsWindow) {
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 700,
+    height: 600,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    },
+    parent: mainWindow,
+    modal: true,
+    resizable: false
+  });
+
+  settingsWindow.loadFile('settings.html');
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null;
   });
 }
 
@@ -56,7 +186,10 @@ function createViewerWindow() {
   });
 }
 
-app.whenReady().then(createMainWindow);
+app.whenReady().then(async () => {
+  await initializeJSONFiles();
+  createMainWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -74,15 +207,19 @@ app.on('activate', () => {
 ipcMain.handle('get-settings', () => {
   return {
     rootFolder: store.get('rootFolder', path.join(app.getPath('documents'), 'ImageDrop')),
-    useOpenAI: store.get('useOpenAI', false),
-    openAIKey: store.get('openAIKey', '')
+    useOpenAI: store.get('useOpenAI', !!COMPANY_OPENAI_KEY), // Auto-enable if company key exists
+    openAIKey: COMPANY_OPENAI_KEY || store.get('openAIKey', ''), // Use company key first
+    hasCompanyKey: !!COMPANY_OPENAI_KEY // Let UI know if company key is set
   };
 });
 
 ipcMain.handle('save-settings', (event, settings) => {
   store.set('rootFolder', settings.rootFolder);
-  store.set('useOpenAI', settings.useOpenAI);
-  store.set('openAIKey', settings.openAIKey);
+  // Only allow toggling OpenAI if no company key is set
+  if (!COMPANY_OPENAI_KEY) {
+    store.set('useOpenAI', settings.useOpenAI);
+    store.set('openAIKey', settings.openAIKey);
+  }
   return { success: true };
 });
 
@@ -95,6 +232,10 @@ ipcMain.handle('select-folder', async () => {
     return result.filePaths[0];
   }
   return null;
+});
+
+ipcMain.handle('open-settings', () => {
+  createSettingsWindow();
 });
 
 ipcMain.handle('open-viewer', () => {
@@ -163,11 +304,18 @@ ipcMain.handle('get-folders', async (event, rootFolder) => {
 
         const stats = await fs.stat(folderPath);
 
+        // Get first image for thumbnail
+        let firstImage = null;
+        if (imageFiles.length > 0) {
+          firstImage = path.join(folderPath, imageFiles[0]);
+        }
+
         folders.push({
           name: entry.name,
           path: folderPath,
           imageCount: imageFiles.length,
-          created: stats.birthtime
+          created: stats.birthtime,
+          firstImage: firstImage
         });
       }
     }
@@ -236,5 +384,33 @@ ipcMain.handle('open-image-external', async (event, imagePath) => {
   } catch (error) {
     console.error('Open image error:', error);
     throw error;
+  }
+});
+
+ipcMain.handle('update-folder-structure', async (event, folderPath, folderName, files) => {
+  try {
+    await addFolderToStructure(folderPath, folderName, files);
+    return { success: true };
+  } catch (error) {
+    console.error('Update folder structure error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-last-processed', async () => {
+  try {
+    return await readLastProcessed();
+  } catch (error) {
+    console.error('Get last processed error:', error);
+    return { lastFolder: null, lastFiles: [] };
+  }
+});
+
+ipcMain.handle('get-folder-structure', async () => {
+  try {
+    return await readFolderStructure();
+  } catch (error) {
+    console.error('Get folder structure error:', error);
+    return { folders: [] };
   }
 });
