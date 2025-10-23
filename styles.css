@@ -23,12 +23,12 @@ body {
 
 h1 {
     text-align: center;
-    color: #DC143C;
+    color: white;
     margin-bottom: 30px;
-    font-size: 48px;
-    font-family: 'Ms Madi', cursive;
-    font-weight: normal;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    font-size: 32px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
 .header-with-settings {
@@ -64,7 +64,8 @@ h1 {
 h2 {
     font-size: 20px;
     margin-bottom: 15px;
-    color: #555;
+    color: white;
+    font-family: Arial, sans-serif;
 }
 
 .settings-section {
@@ -118,46 +119,49 @@ h2 {
 }
 
 .dropzone {
-    border: 3px dashed #ddd;
+    border: 3px dashed rgba(220, 20, 60, 0.5);
     border-radius: 15px;
     padding: 60px 20px;
     text-align: center;
     transition: all 0.3s;
     cursor: pointer;
     margin-bottom: 30px;
-    background: #fafafa;
+    background: rgba(220, 20, 60, 0.1);
 }
 
 .dropzone:hover {
-    border-color: #667eea;
-    background: #f0f0ff;
+    border-color: #DC143C;
+    background: rgba(220, 20, 60, 0.2);
 }
 
 .dropzone.dragover {
-    border-color: #667eea;
-    background: #e8ebff;
+    border-color: #DC143C;
+    background: rgba(220, 20, 60, 0.3);
     transform: scale(1.02);
 }
 
 .dropzone-content svg {
-    color: #667eea;
+    color: #DC143C;
     margin-bottom: 15px;
 }
 
 .dropzone-content h3 {
-    color: #333;
+    color: white;
     margin-bottom: 10px;
     font-size: 24px;
+    font-family: Arial, sans-serif;
 }
 
 .dropzone-content p {
-    color: #666;
+    color: rgba(255, 255, 255, 0.9);
     margin-bottom: 5px;
+    font-family: Arial, sans-serif;
 }
 
 .dropzone-content .hint {
     font-size: 12px;
-    color: #999;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: Arial, sans-serif;
 }
 
 .actions {
