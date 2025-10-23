@@ -41,6 +41,9 @@ h1 {
 .header-with-settings h1 {
     margin-bottom: 0;
     flex: 1;
+    font-family: 'Ms Madi', cursive;
+    font-size: 48px;
+    font-weight: bold;
 }
 
 .settings-icon {
