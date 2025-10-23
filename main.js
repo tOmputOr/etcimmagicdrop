@@ -119,12 +119,13 @@ let settingsWindow;
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 600,
-    height: 700,
+    height: 400,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     },
     resizable: true,
+    center: true,
     icon: path.join(__dirname, 'assets/icon.png')
   });
 
