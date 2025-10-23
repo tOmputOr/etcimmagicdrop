@@ -443,35 +443,62 @@ async function sendToEtcimWindow(jsonPath) {
     throw new Error('SendMessage only works on Windows');
   }
 
-  // Create PowerShell script to find window and send message
+  // Escape the path for PowerShell
+  const escapedPath = jsonPath.replace(/\\/g, '\\\\');
+
+  // Create PowerShell script with proper COPYDATASTRUCT
   const psScript = `
-    Add-Type @"
-      using System;
-      using System.Runtime.InteropServices;
-      using System.Text;
+Add-Type @"
+  using System;
+  using System.Runtime.InteropServices;
 
-      public class WinAPI {
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+  [StructLayout(LayoutKind.Sequential)]
+  public struct COPYDATASTRUCT {
+    public IntPtr dwData;
+    public int cbData;
+    public IntPtr lpData;
+  }
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
-      }
+  public class WinAPI {
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, ref COPYDATASTRUCT lParam);
+  }
 "@
 
-    $hwnd = [WinAPI]::FindWindow($null, "ETCIM20")
-    if ($hwnd -eq [IntPtr]::Zero) {
-      Write-Error "ETCIM20 window not found"
-      exit 1
-    }
+try {
+  $$hwnd = [WinAPI]::FindWindow($$null, "ETCIM20")
+  if ($$hwnd -eq [IntPtr]::Zero) {
+    Write-Error "ETCIM20 window not found"
+    exit 1
+  }
 
-    $WM_COPYDATA = 0x004A
-    [WinAPI]::SendMessage($hwnd, $WM_COPYDATA, [IntPtr]::Zero, "${jsonPath.replace(/\\/g, '\\\\')}")
-    Write-Output "Message sent to ETCIM20"
-  `;
+  $$path = "${escapedPath}"
+  $$bytes = [System.Text.Encoding]::Unicode.GetBytes($$path)
+  $$ptr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($$bytes.Length)
+  [System.Runtime.InteropServices.Marshal]::Copy($$bytes, 0, $$ptr, $$bytes.Length)
+
+  $$cds = New-Object COPYDATASTRUCT
+  $$cds.dwData = [IntPtr]::Zero
+  $$cds.cbData = $$bytes.Length
+  $$cds.lpData = $$ptr
+
+  $$WM_COPYDATA = 0x004A
+  $$result = [WinAPI]::SendMessage($$hwnd, $$WM_COPYDATA, [IntPtr]::Zero, [ref]$$cds)
+
+  [System.Runtime.InteropServices.Marshal]::FreeHGlobal($$ptr)
+
+  Write-Output "Message sent to ETCIM20 (result: $$result)"
+} catch {
+  Write-Error $$_.Exception.Message
+  exit 1
+}
+`;
 
   return new Promise((resolve, reject) => {
-    exec(`powershell -Command "${psScript.replace(/"/g, '\\"')}"`, (error, stdout, stderr) => {
+    exec(`powershell -Command "${psScript.replace(/\$/g, '$')}"`, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(`Failed to send to ETCIM20: ${stderr || error.message}`));
       } else {
