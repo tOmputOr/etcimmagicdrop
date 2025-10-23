@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Drop</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Image Drop</h1>
+
+        <!-- Settings Section -->
+        <div class="settings-section">
+            <h2>Settings</h2>
+            <div class="setting-row">
+                <label>Root Folder:</label>
+                <div class="folder-select">
+                    <input type="text" id="rootFolder" readonly>
+                    <button id="selectFolder" class="btn-secondary">Browse</button>
+                </div>
+            </div>
+            <div class="setting-row">
+                <label>
+                    <input type="checkbox" id="useOpenAI">
+                    Use OpenAI for descriptions
+                </label>
+            </div>
+            <div class="setting-row" id="apiKeyRow" style="display: none;">
+                <label>OpenAI API Key:</label>
+                <input type="password" id="openAIKey" placeholder="sk-...">
+            </div>
+            <button id="saveSettings" class="btn-primary">Save Settings</button>
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-content">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <h3>Drop files here</h3>
+                <p>PDF, Word, Excel, or Images</p>
+                <p class="hint">or press Ctrl+V to paste from clipboard</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="actions">
+            <button id="captureScreen" class="btn-action">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="20" rx="2"></rect>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                Capture Screen
+            </button>
+            <button id="snippingTool" class="btn-action">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path>
+                    <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon>
+                </svg>
+                Snipping Tool
+            </button>
+            <button id="openViewer" class="btn-primary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                Open Viewer
+            </button>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="status"></div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="viewer-container">
+        <!-- Folders View -->
+        <div id="foldersView">
+            <div class="viewer-header">
+                <h1>Recent Folders</h1>
+                <button id="refreshFolders" class="btn-primary">Refresh</button>
+            </div>
+            <div id="foldersGrid" class="folders-grid"></div>
+        </div>
+
+        <!-- Images View -->
+        <div id="imagesView" class="images-view">
+            <div class="images-header">
+                <button id="backToFolders" class="back-btn">← Back to Folders</button>
+                <div>
+                    <button id="deleteFolder" class="delete-btn">Delete Folder</button>
+                </div>
+            </div>
+            <h2 id="folderName"></h2>
+            <div id="descriptionBox" class="description-box" style="display: none;"></div>
+            <div id="imagesGrid" class="images-grid"></div>
+        </div>
+
+        <!-- Image Modal -->
+        <div id="imageModal" class="modal">
+            <div class="modal-close" id="closeModal">×</div>
+            <img id="modalImage" src="" alt="Full size image">
+        </div>
+    </div>
+
+    <script src="viewer-renderer.js"></script>
+</body>
+</html>
