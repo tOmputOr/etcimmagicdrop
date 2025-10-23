@@ -345,6 +345,34 @@ button:active {
     transform: scale(1.1);
 }
 
+.folder-send-icon {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(34, 139, 34, 0.9);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    z-index: 10;
+    transition: all 0.3s;
+    opacity: 0;
+}
+
+.folder-card:hover .folder-send-icon {
+    opacity: 1;
+}
+
+.folder-send-icon:hover {
+    background: #228B22;
+    transform: scale(1.1);
+}
+
 .folder-card h3 {
     color: #333;
     margin-bottom: 10px;

@@ -39,6 +39,7 @@ function displayFolders(folders) {
         }
 
         card.innerHTML = `
+            <div class="folder-send-icon" title="Send to Etcim">📤</div>
             <div class="folder-delete-icon" title="Delete folder">×</div>
             ${thumbnailHtml}
             <div class="folder-card-content">
@@ -50,9 +51,17 @@ function displayFolders(folders) {
 
         // Add click handler for opening folder
         card.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('folder-delete-icon')) {
+            if (!e.target.classList.contains('folder-delete-icon') &&
+                !e.target.classList.contains('folder-send-icon')) {
                 openFolder(folder);
             }
+        });
+
+        // Add send to etcim handler
+        const sendIcon = card.querySelector('.folder-send-icon');
+        sendIcon.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await sendFolderToEtcim(folder);
         });
 
         // Add delete handler
@@ -164,30 +173,35 @@ function formatDate(date) {
     return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
 }
 
-async function sendToEtcim() {
+async function sendFolderToEtcim(folder) {
     try {
-        const folderStructure = await ipcRenderer.invoke('get-folder-structure');
+        // Get the full folder data including files
+        const { images } = await ipcRenderer.invoke('get-folder-images', folder.path);
+
         const etcimData = {
             timestamp: new Date().toISOString(),
-            folders: folderStructure.folders.map(folder => ({
+            folder: {
                 name: folder.name,
                 path: folder.path,
                 created: folder.created,
-                fileCount: folder.files ? folder.files.length : 0,
-                files: folder.files || []
-            }))
+                fileCount: folder.imageCount,
+                files: images.map(img => ({
+                    name: img.name,
+                    path: img.path,
+                    created: img.created
+                }))
+            }
         };
 
-        // Save to etcim.json in root folder
+        // Save to etcim.json in root folder (overwrites)
         const etcimPath = await ipcRenderer.invoke('save-etcim-json', etcimData);
-        alert(`Etcim data exported successfully to:\n${etcimPath}`);
+        alert(`Folder "${folder.name}" sent to Etcim:\n${etcimPath}`);
     } catch (error) {
-        alert('Error exporting to Etcim: ' + error.message);
+        alert('Error sending to Etcim: ' + error.message);
     }
 }
 
 // Event listeners
-document.getElementById('sendToEtcim').addEventListener('click', sendToEtcim);
 document.getElementById('refreshFolders').addEventListener('click', loadFolders);
 document.getElementById('backToFolders').addEventListener('click', backToFolders);
 document.getElementById('deleteFolder').addEventListener('click', deleteCurrentFolder);
