@@ -1,8 +1,7 @@
-const { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, shell, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const Store = require('electron-store');
-const screenshot = require('screenshot-desktop');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 
@@ -104,8 +103,17 @@ ipcMain.handle('open-viewer', () => {
 
 ipcMain.handle('capture-screen', async () => {
   try {
-    const img = await screenshot();
-    return img.toString('base64');
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: 1920, height: 1080 }
+    });
+
+    if (sources.length > 0) {
+      // Get the first screen (primary display)
+      const source = sources[0];
+      return source.thumbnail.toPNG().toString('base64');
+    }
+    throw new Error('No screen source available');
   } catch (error) {
     console.error('Screenshot error:', error);
     throw error;
