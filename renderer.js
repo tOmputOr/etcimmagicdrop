@@ -26,9 +26,33 @@ document.getElementById('openSettings').addEventListener('click', () => {
 // Dropzone handlers
 const dropzone = document.getElementById('dropzone');
 
-dropzone.addEventListener('dragover', (e) => {
+// Check clipboard on mouse enter dropzone
+dropzone.addEventListener('mouseenter', async () => {
+    const base64Image = await ipcRenderer.invoke('get-clipboard-image');
+    const pasteBtn = document.getElementById('pasteClipboardBtn');
+
+    if (base64Image) {
+        pasteBtn.style.display = 'inline-block';
+    }
+});
+
+dropzone.addEventListener('mouseleave', () => {
+    document.getElementById('pasteClipboardBtn').style.display = 'none';
+});
+
+dropzone.addEventListener('dragover', async (e) => {
     e.preventDefault();
     dropzone.classList.add('dragover');
+
+    // Check if clipboard has image content
+    const base64Image = await ipcRenderer.invoke('get-clipboard-image');
+    const pasteBtn = document.getElementById('pasteClipboardBtn');
+
+    if (base64Image) {
+        pasteBtn.style.display = 'inline-block';
+    } else {
+        pasteBtn.style.display = 'none';
+    }
 });
 
 dropzone.addEventListener('dragleave', () => {
@@ -38,9 +62,29 @@ dropzone.addEventListener('dragleave', () => {
 dropzone.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
+    document.getElementById('pasteClipboardBtn').style.display = 'none';
 
     const files = Array.from(e.dataTransfer.files);
     await processFiles(files);
+});
+
+// Paste clipboard button handler
+document.getElementById('pasteClipboardBtn').addEventListener('click', async (e) => {
+    e.stopPropagation(); // Prevent dropzone click event
+
+    const base64Image = await ipcRenderer.invoke('get-clipboard-image');
+    if (base64Image) {
+        // Clear clipboard immediately after reading (before AI processing)
+        await ipcRenderer.invoke('clear-clipboard');
+
+        // Hide button immediately
+        document.getElementById('pasteClipboardBtn').style.display = 'none';
+
+        showStatus('Processing image from clipboard...', 'info');
+        const buffer = Buffer.from(base64Image, 'base64');
+        await saveImage(buffer, 'clipboard');
+        showStatus('Clipboard image saved successfully!', 'success');
+    }
 });
 
 dropzone.addEventListener('click', () => {

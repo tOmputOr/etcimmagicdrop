@@ -8,6 +8,7 @@ async function loadSettings() {
     currentSettings = await ipcRenderer.invoke('get-settings');
     document.getElementById('rootFolder').value = currentSettings.rootFolder;
     document.getElementById('useOpenAI').checked = currentSettings.useOpenAI;
+    document.getElementById('enableDevTools').checked = currentSettings.enableDevTools || false;
 
     if (currentSettings.hasCompanyKey) {
         document.getElementById('apiKeyRow').style.display = 'none';
@@ -47,12 +48,13 @@ document.getElementById('saveSettings').addEventListener('click', async () => {
     const settings = {
         rootFolder: document.getElementById('rootFolder').value,
         useOpenAI: document.getElementById('useOpenAI').checked,
-        openAIKey: document.getElementById('openAIKey').value
+        openAIKey: document.getElementById('openAIKey').value,
+        enableDevTools: document.getElementById('enableDevTools').checked
     };
 
     await ipcRenderer.invoke('save-settings', settings);
     currentSettings = settings;
-    showStatus('Settings saved successfully!', 'success');
+    showStatus('Settings saved successfully! Restart app for DevTools setting to take effect.', 'success');
 });
 
 document.getElementById('closeSettings').addEventListener('click', () => {

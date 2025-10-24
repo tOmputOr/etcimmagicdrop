@@ -126,13 +126,18 @@ function createMainWindow() {
     },
     resizable: true,
     center: true,
-    icon: path.join(__dirname, 'assets/icon.png')
+    icon: path.join(__dirname, 'assets', 'icons', 'Elbex20.ico'),
+    autoHideMenuBar: true
   });
 
   mainWindow.loadFile('index.html');
 
-  // Open DevTools in development
-  // mainWindow.webContents.openDevTools();
+  // Enable F12 to toggle DevTools (only if enabled in settings)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' && store.get('enableDevTools', false)) {
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -154,10 +159,19 @@ function createSettingsWindow() {
     },
     parent: mainWindow,
     modal: true,
-    resizable: false
+    resizable: false,
+    icon: path.join(__dirname, 'assets', 'icons', 'Elbex20.ico'),
+    autoHideMenuBar: true
   });
 
   settingsWindow.loadFile('settings.html');
+
+  // Enable F12 to toggle DevTools (only if enabled in settings)
+  settingsWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' && store.get('enableDevTools', false)) {
+      settingsWindow.webContents.toggleDevTools();
+    }
+  });
 
   settingsWindow.on('closed', () => {
     settingsWindow = null;
@@ -177,10 +191,19 @@ function createViewerWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    parent: mainWindow
+    parent: mainWindow,
+    icon: path.join(__dirname, 'assets', 'icons', 'Elbex20.ico'),
+    autoHideMenuBar: true
   });
 
   viewerWindow.loadFile('viewer.html');
+
+  // Enable F12 to toggle DevTools (only if enabled in settings)
+  viewerWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' && store.get('enableDevTools', false)) {
+      viewerWindow.webContents.toggleDevTools();
+    }
+  });
 
   viewerWindow.on('closed', () => {
     viewerWindow = null;
@@ -210,12 +233,14 @@ ipcMain.handle('get-settings', () => {
     rootFolder: store.get('rootFolder', path.join(app.getPath('documents'), 'ImageDrop')),
     useOpenAI: store.get('useOpenAI', !!COMPANY_OPENAI_KEY), // Auto-enable if company key exists
     openAIKey: COMPANY_OPENAI_KEY || store.get('openAIKey', ''), // Use company key first
-    hasCompanyKey: !!COMPANY_OPENAI_KEY // Let UI know if company key is set
+    hasCompanyKey: !!COMPANY_OPENAI_KEY, // Let UI know if company key is set
+    enableDevTools: store.get('enableDevTools', false) // Default is off
   };
 });
 
 ipcMain.handle('save-settings', (event, settings) => {
   store.set('rootFolder', settings.rootFolder);
+  store.set('enableDevTools', settings.enableDevTools);
   // Only allow toggling OpenAI if no company key is set
   if (!COMPANY_OPENAI_KEY) {
     store.set('useOpenAI', settings.useOpenAI);
@@ -323,6 +348,16 @@ ipcMain.handle('get-clipboard-image', () => {
   } catch (error) {
     console.error('Clipboard error:', error);
     return null;
+  }
+});
+
+ipcMain.handle('clear-clipboard', () => {
+  try {
+    clipboard.clear();
+    return { success: true };
+  } catch (error) {
+    console.error('Clear clipboard error:', error);
+    return { success: false };
   }
 });
 

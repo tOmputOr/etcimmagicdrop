@@ -6,9 +6,9 @@
     <title>Settings</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="container" style="max-width: 760px;">
-        <h1>⚙️ Settings</h1>
+<body style="background: white;">
+    <div class="container" style="max-width: 760px; background: white; color: #333;">
+        <h1 style="color: #DC143C;">Settings</h1>
 
         <div class="settings-section">
             <div class="setting-row">
@@ -32,6 +32,13 @@
                 <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
                     🔒 Your API key is stored securely on your local machine only
                 </small>
+            </div>
+
+            <div class="setting-row">
+                <label>
+                    <input type="checkbox" id="enableDevTools">
+                    Enable F12 Developer Tools
+                </label>
             </div>
 
             <div class="setting-row">
