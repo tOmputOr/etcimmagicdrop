@@ -10,11 +10,9 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header-with-settings">
-            <button id="openSettings" class="settings-icon" title="Settings">⚙️</button>
-        </div>
+    <button id="openSettings" class="settings-icon" title="Settings">⚙️</button>
 
+    <div class="container">
         <!-- Drop Zone -->
         <div class="dropzone" id="dropzone">
             <div class="dropzone-content">
@@ -32,30 +30,16 @@
         <!-- Action Buttons -->
         <div class="actions">
             <button id="captureScreen" class="btn-action">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="2" width="20" height="20" rx="2"></rect>
-                    <circle cx="12" cy="12" r="3"></circle>
+                <svg width="24" height="24" viewBox="0 0 896 1024" fill="currentColor">
+                    <path d="M128 768h639.875V256H128V768zM255.938 384h384v256h-384V384zM64 192.062h191.938v-64H0V384h64V192.062zM64 640H0v255.938h255.938V832H64V640zM639.938 128.062v64h191.938V384h64V128.062H639.938zM831.875 832H639.938v63.938h255.938V640h-64V832z"/>
                 </svg>
                 Capture Screen
             </button>
             <button id="snippingTool" class="btn-action">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="6" cy="6" r="3"></circle>
-                    <circle cx="18" cy="6" r="3"></circle>
-                    <circle cx="18" cy="18" r="3"></circle>
-                    <circle cx="6" cy="18" r="3"></circle>
-                    <path d="M9 6h6M18 9v6M9 18h6M6 9v6"></path>
-                    <line x1="4" y1="4" x2="8" y2="8"></line>
-                    <line x1="16" y1="4" x2="20" y2="8"></line>
+                <svg width="24" height="24" viewBox="0 0 896 1024" fill="currentColor">
+                    <path d="M127.938 191.938H0v64h191.938V64h-64V191.938zM0 832.062h127.938V960h64V768.062H0V832.062zM768.062 191.938V64h-64v191.938H896v-64H768.062zM704.062 960h64V832.062H896v-64H704.062V960zM192.062 704H704V320H192.062V704zM320 448h256v128H320V448z"/>
                 </svg>
                 Snippet Tool
-            </button>
-            <button id="rectangleSnippet" class="btn-action">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                    <path d="M9 3v18M15 3v18M3 9h18M3 15h18"></path>
-                </svg>
-                Rectangle
             </button>
             <button id="openViewer" class="btn-primary">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

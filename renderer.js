@@ -411,26 +411,3 @@ function showStatus(message, type) {
     }
 }
 
-// Rectangle Snippet button - Uses custom overlay with drag selection
-document.getElementById('rectangleSnippet').addEventListener('click', async () => {
-    try {
-        const result = await ipcRenderer.invoke('open-rectangle-snippet', currentSettings.rootFolder);
-        if (result.success) {
-            showStatus('Drag to select area to capture...', 'info');
-        }
-    } catch (error) {
-        showStatus('Error: ' + error.message, 'error');
-    }
-});
-
-// Listen for snippet capture from overlay
-ipcRenderer.on('snippet-captured', async (event, base64Image) => {
-    try {
-        showStatus('Processing captured region...', 'info');
-        const buffer = Buffer.from(base64Image, 'base64');
-        await saveImage(buffer, 'snippet');
-        showStatus('Snippet captured successfully!', 'success');
-    } catch (error) {
-        showStatus('Error processing snippet: ' + error.message, 'error');
-    }
-});

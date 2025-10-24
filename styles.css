@@ -34,29 +34,28 @@ h1 {
     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
-.header-with-settings {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-bottom: 30px;
-}
-
 .settings-icon {
-    background: transparent;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
     border: none;
     cursor: pointer;
-    padding: 8px;
+    padding: 12px;
     border-radius: 50%;
     transition: all 0.3s;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 28px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
 }
 
 .settings-icon:hover {
-    background: rgba(220, 20, 60, 0.1);
-    transform: rotate(90deg);
+    background: white;
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 
 h2 {
@@ -164,7 +163,7 @@ h2 {
 
 .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 15px;
     margin-bottom: 20px;
 }
