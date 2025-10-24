@@ -194,9 +194,11 @@ async function sendFolderToEtcim(folder) {
         };
 
         // Save to etcim.json in root folder (overwrites)
-        const etcimPath = await ipcRenderer.invoke('save-etcim-json', etcimData);
-        alert(`Folder "${folder.name}" sent to Etcim:\n${etcimPath}`);
+        const result = await ipcRenderer.invoke('save-etcim-json', etcimData);
+        console.log('Send to ETCIM20 result:', result);
+        alert(`File: ${result.path}\n\nPowerShell output:\n${result.psOutput}`);
     } catch (error) {
+        console.error('Error sending to Etcim:', error);
         alert('Error sending to Etcim: ' + error.message);
     }
 }

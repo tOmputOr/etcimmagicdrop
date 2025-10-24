@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, shell, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, nativeImage, shell, desktopCapturer, screen } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const Store = require('electron-store');
@@ -115,6 +115,7 @@ async function addFolderToStructure(folderPath, folderName, files) {
 let mainWindow;
 let viewerWindow;
 let settingsWindow;
+let snippetOverlayWindow;
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -146,8 +147,8 @@ function createSettingsWindow() {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 700,
-    height: 600,
+    width: 800,
+    height: 800,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -264,14 +265,226 @@ ipcMain.handle('capture-screen', async () => {
 
 ipcMain.handle('open-snipping-tool', async (event, rootFolder) => {
   try {
-    // Launch Windows Snipping Tool and monitor clipboard
     if (process.platform === 'win32') {
-      exec('snippingtool /clip');
-      return { success: true };
+      // Use separate PS1 file for better reliability
+      const scriptPath = path.join(__dirname, 'start-snipping-tool.ps1');
+      const command = `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`;
+
+      const { stdout, stderr } = await execAsync(command);
+
+      const wasAlreadyRunning = stdout.includes('ALREADY_RUNNING');
+      const keysSent = stdout.includes('KEYS_SENT');
+
+      console.log('Snipping tool status:', stdout.trim());
+      if (stderr) console.error('PowerShell stderr:', stderr);
+
+      // Store whether we started it (so we know if we should close it later)
+      global.snippingToolStartedByUs = !wasAlreadyRunning;
+
+      return { success: keysSent, wasAlreadyRunning };
     }
     throw new Error('Snipping tool only available on Windows');
   } catch (error) {
     console.error('Snipping tool error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('close-snipping-tool', async () => {
+  try {
+    if (process.platform === 'win32') {
+      // Only close if we started it
+      if (global.snippingToolStartedByUs) {
+        console.log('Closing snipping tool (we started it)');
+        exec('taskkill /IM SnippingTool.exe /F', (error) => {
+          if (error) {
+            console.log('Snipping tool was already closed or not found');
+          }
+        });
+        global.snippingToolStartedByUs = false;
+      } else {
+        console.log('Not closing snipping tool (was already running)');
+      }
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error closing snipping tool:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('open-rectangle-snippet', async (event, rootFolder) => {
+  try {
+    createSnippetOverlay();
+    return { success: true };
+  } catch (error) {
+    console.error('Rectangle snippet error:', error);
+    throw error;
+  }
+});
+
+function createSnippetOverlay() {
+  if (snippetOverlayWindow) {
+    snippetOverlayWindow.focus();
+    return;
+  }
+
+  // Get all displays
+  const displays = screen.getAllDisplays();
+
+  // Calculate total bounds covering all displays
+  let minX = 0, minY = 0, maxX = 0, maxY = 0;
+  displays.forEach(display => {
+    const { x, y, width, height } = display.bounds;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+
+  const totalWidth = maxX - minX;
+  const totalHeight = maxY - minY;
+
+  snippetOverlayWindow = new BrowserWindow({
+    x: minX,
+    y: minY,
+    width: totalWidth,
+    height: totalHeight,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  snippetOverlayWindow.loadFile('snippet-overlay.html');
+  snippetOverlayWindow.setAlwaysOnTop(true, 'screen-saver');
+
+  snippetOverlayWindow.on('closed', () => {
+    snippetOverlayWindow = null;
+  });
+}
+
+ipcMain.handle('close-snippet-overlay', async () => {
+  if (snippetOverlayWindow) {
+    snippetOverlayWindow.close();
+    snippetOverlayWindow = null;
+  }
+});
+
+ipcMain.handle('get-display-info', async () => {
+  const displays = screen.getAllDisplays();
+
+  // Calculate total bounds
+  let minX = 0, minY = 0, maxX = 0, maxY = 0;
+  displays.forEach(display => {
+    const { x, y, width, height } = display.bounds;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+
+  return {
+    bounds: { x: minX, y: minY },
+    totalWidth: maxX - minX,
+    totalHeight: maxY - minY,
+    displays: displays.map(d => ({
+      id: d.id,
+      bounds: d.bounds,
+      workArea: d.workArea,
+      scaleFactor: d.scaleFactor
+    }))
+  };
+});
+
+ipcMain.handle('capture-region', async (event, bounds) => {
+  try {
+    // Close overlay first
+    if (snippetOverlayWindow) {
+      snippetOverlayWindow.close();
+      snippetOverlayWindow = null;
+    }
+
+    // Wait a bit for overlay to close
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Get all displays and find which one contains the selection
+    const displays = screen.getAllDisplays();
+    const sharp = require('sharp');
+
+    // Capture all screens
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: {
+        width: 8192,
+        height: 8192
+      }
+    });
+
+    if (sources.length === 0) {
+      throw new Error('No screen source available');
+    }
+
+    // Find the correct screen source based on bounds
+    let targetSource = sources[0];
+    let offsetX = bounds.x;
+    let offsetY = bounds.y;
+
+    // For multi-monitor setups, we need to capture all screens and stitch them
+    if (sources.length > 1) {
+      // Capture from the correct screen
+      for (let i = 0; i < displays.length && i < sources.length; i++) {
+        const display = displays[i];
+        const selectionCenterX = bounds.x + bounds.width / 2;
+        const selectionCenterY = bounds.y + bounds.height / 2;
+
+        if (selectionCenterX >= display.bounds.x &&
+            selectionCenterX < display.bounds.x + display.bounds.width &&
+            selectionCenterY >= display.bounds.y &&
+            selectionCenterY < display.bounds.y + display.bounds.height) {
+          targetSource = sources[i];
+          offsetX = bounds.x - display.bounds.x;
+          offsetY = bounds.y - display.bounds.y;
+          break;
+        }
+      }
+    }
+
+    const image = targetSource.thumbnail;
+    const imageSize = image.getSize();
+
+    // Scale bounds if needed (for high DPI displays)
+    const scaleX = imageSize.width / displays[0].bounds.width;
+    const scaleY = imageSize.height / displays[0].bounds.height;
+
+    // Crop to selected region with scaling
+    const croppedBuffer = await sharp(image.toPNG())
+      .extract({
+        left: Math.max(0, Math.round(offsetX * scaleX)),
+        top: Math.max(0, Math.round(offsetY * scaleY)),
+        width: Math.round(bounds.width * scaleX),
+        height: Math.round(bounds.height * scaleY)
+      })
+      .toBuffer();
+
+    // Save the cropped image (same flow as screen capture)
+    const base64Image = croppedBuffer.toString('base64');
+
+    // Send to main window to process
+    if (mainWindow) {
+      mainWindow.webContents.send('snippet-captured', base64Image);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Capture region error:', error);
     throw error;
   }
 });
@@ -423,14 +636,16 @@ ipcMain.handle('save-etcim-json', async (event, data) => {
     await fs.writeFile(etcimPath, JSON.stringify(data, null, 2));
 
     // Send message to ETCIM20 window
+    let sendResult = '';
     try {
-      await sendToEtcimWindow(etcimPath);
+      sendResult = await sendToEtcimWindow(etcimPath);
+      console.log('PowerShell output:', sendResult);
     } catch (error) {
       console.error('Error sending to ETCIM20:', error);
-      // Continue even if sending fails
+      sendResult = 'Error: ' + error.message;
     }
 
-    return etcimPath;
+    return { path: etcimPath, psOutput: sendResult };
   } catch (error) {
     console.error('Save etcim.json error:', error);
     throw error;
@@ -443,73 +658,18 @@ async function sendToEtcimWindow(jsonPath) {
     throw new Error('SendMessage only works on Windows');
   }
 
-  // Escape the path for PowerShell
-  const escapedPath = jsonPath.replace(/\\/g, '\\\\').replace(/'/g, "''");
-
-  // Create PowerShell script with proper COPYDATASTRUCT using ANSI encoding for VFP9 compatibility
-  const psScript = `
-Add-Type @"
-  using System;
-  using System.Runtime.InteropServices;
-
-  [StructLayout(LayoutKind.Sequential)]
-  public struct COPYDATASTRUCT {
-    public IntPtr dwData;
-    public int cbData;
-    public IntPtr lpData;
-  }
-
-  public class WinAPI {
-    [DllImport("user32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
-    public static extern IntPtr FindWindowA(string lpClassName, string lpWindowName);
-
-    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
-    public static extern IntPtr SendMessageA(IntPtr hWnd, uint Msg, IntPtr wParam, ref COPYDATASTRUCT lParam);
-  }
-"@
-
-try {
-  $$hwnd = [WinAPI]::FindWindowA($$null, "ETCIM20")
-  if ($$hwnd -eq [IntPtr]::Zero) {
-    Write-Output "ETCIM20 window not found. Window handle: $$hwnd"
-    exit 1
-  }
-
-  Write-Output "Found ETCIM20 window: $$hwnd"
-
-  $$path = '${escapedPath}'
-  # Use ANSI encoding for VFP9 compatibility
-  $$bytes = [System.Text.Encoding]::Default.GetBytes($$path + [char]0)
-  $$ptr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($$bytes.Length)
-  [System.Runtime.InteropServices.Marshal]::Copy($$bytes, 0, $$ptr, $$bytes.Length)
-
-  $$cds = New-Object COPYDATASTRUCT
-  $$cds.dwData = [IntPtr]::Zero
-  $$cds.cbData = $$bytes.Length
-  $$cds.lpData = $$ptr
-
-  $$WM_COPYDATA = 0x004A
-  Write-Output "Sending message with path: $$path"
-  Write-Output "Data size: $$($$cds.cbData) bytes"
-
-  $$result = [WinAPI]::SendMessageA($$hwnd, $$WM_COPYDATA, [IntPtr]::Zero, [ref]$$cds)
-
-  [System.Runtime.InteropServices.Marshal]::FreeHGlobal($$ptr)
-
-  Write-Output "Message sent to ETCIM20. Result: $$result"
-} catch {
-  Write-Output "Error: $$($$_.Exception.Message)"
-  Write-Output "Stack trace: $$($$_.Exception.StackTrace)"
-  exit 1
-}
-`;
+  // Option 1: Use separate PS1 file (current - most reliable)
+  const scriptPath = path.join(__dirname, 'send-to-etcim.ps1');
+  const command = `powershell -ExecutionPolicy Bypass -File "${scriptPath}" -windowTitle "ETCIM20" -textToSend "${jsonPath}"`;
 
   return new Promise((resolve, reject) => {
-    exec(`powershell -Command "${psScript.replace(/\$/g, '$')}"`, (error, stdout, stderr) => {
+    exec(command, (error, stdout, stderr) => {
       if (error) {
-        reject(new Error(`Failed to send to ETCIM20: ${stderr || error.message}`));
+        reject(new Error(`PowerShell error: ${stderr || error.message}`));
       } else {
-        resolve(stdout.trim());
+        console.log('PowerShell stdout:', stdout);
+        console.log('PowerShell stderr:', stderr);
+        resolve(stdout.trim() || 'No output');
       }
     });
   });

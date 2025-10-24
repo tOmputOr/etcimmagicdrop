@@ -36,18 +36,9 @@ h1 {
 
 .header-with-settings {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 30px;
-}
-
-.header-with-settings h1 {
-    margin-bottom: 0;
-    flex: 1;
-    font-family: 'Ms Madi', cursive;
-    font-size: 48px;
-    font-weight: bold;
-    color: #8B0000;
 }
 
 .settings-icon {
@@ -173,7 +164,7 @@ h2 {
 
 .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 15px;
     margin-bottom: 20px;
 }

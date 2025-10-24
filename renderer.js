@@ -92,13 +92,46 @@ document.getElementById('captureScreen').addEventListener('click', async () => {
 
 document.getElementById('snippingTool').addEventListener('click', async () => {
     try {
-        showStatus('Capturing screen...', 'info');
-        const base64Image = await ipcRenderer.invoke('capture-screen');
-        const buffer = Buffer.from(base64Image, 'base64');
-        await saveImage(buffer, 'screen-capture');
-        showStatus('Screen captured successfully!', 'success');
+        showStatus('Starten snippet tool... even geduld', 'info');
+
+        // Capture current clipboard state BEFORE opening snipping tool
+        const initialClipboard = await ipcRenderer.invoke('get-clipboard-image');
+
+        await ipcRenderer.invoke('open-snipping-tool');
+
+        showStatus('Selecteer een gebied om te knippen...', 'info');
+
+        let timeoutHandle = null;
+        let captureCompleted = false;
+
+        // Start monitoring clipboard for NEW captured image
+        const checkInterval = setInterval(async () => {
+            const base64Image = await ipcRenderer.invoke('get-clipboard-image');
+            // Only process if there's a new image different from initial state
+            if (base64Image && base64Image !== initialClipboard) {
+                captureCompleted = true;
+                clearInterval(checkInterval);
+                if (timeoutHandle) clearTimeout(timeoutHandle);
+
+                // Close snipping tool
+                await ipcRenderer.invoke('close-snipping-tool');
+
+                showStatus('Verwerken snippet...', 'info');
+                const buffer = Buffer.from(base64Image, 'base64');
+                await saveImage(buffer, 'snippet-tool');
+                showStatus('Snippet succesvol verwerkt!', 'success');
+            }
+        }, 500);
+
+        // Stop checking after 30 seconds (only show error if no capture happened)
+        timeoutHandle = setTimeout(() => {
+            clearInterval(checkInterval);
+            if (!captureCompleted) {
+                showStatus('Snippet tool timeout - geen capture gedetecteerd', 'error');
+            }
+        }, 30000);
     } catch (error) {
-        showStatus('Error capturing screen: ' + error.message, 'error');
+        showStatus('Error: ' + error.message, 'error');
     }
 });
 
@@ -244,6 +277,9 @@ async function saveImage(buffer, baseName) {
     const pngBuffer = await sharp(buffer).png().toBuffer();
 
     // Create folder name
+    if (currentSettings.useOpenAI && currentSettings.openAIKey) {
+        showStatus('Generating AI folder name...', 'info');
+    }
     const folderName = await getFolderName(pngBuffer);
     const folderPath = path.join(currentSettings.rootFolder, folderName);
     await fs.mkdir(folderPath, { recursive: true });
@@ -262,6 +298,7 @@ async function saveImage(buffer, baseName) {
         try {
             const existingDesc = await fs.readFile(descPath, 'utf-8').catch(() => null);
             if (!existingDesc) {
+                showStatus('Generating AI description...', 'info');
                 const description = await generateDescription(pngBuffer);
                 await fs.writeFile(descPath, description);
             }
@@ -373,3 +410,27 @@ function showStatus(message, type) {
         }, 3000);
     }
 }
+
+// Rectangle Snippet button - Uses custom overlay with drag selection
+document.getElementById('rectangleSnippet').addEventListener('click', async () => {
+    try {
+        const result = await ipcRenderer.invoke('open-rectangle-snippet', currentSettings.rootFolder);
+        if (result.success) {
+            showStatus('Drag to select area to capture...', 'info');
+        }
+    } catch (error) {
+        showStatus('Error: ' + error.message, 'error');
+    }
+});
+
+// Listen for snippet capture from overlay
+ipcRenderer.on('snippet-captured', async (event, base64Image) => {
+    try {
+        showStatus('Processing captured region...', 'info');
+        const buffer = Buffer.from(base64Image, 'base64');
+        await saveImage(buffer, 'snippet');
+        showStatus('Snippet captured successfully!', 'success');
+    } catch (error) {
+        showStatus('Error processing snippet: ' + error.message, 'error');
+    }
+});
