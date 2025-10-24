@@ -3,6 +3,7 @@ const path = require('path');
 
 let currentSettings = {};
 let currentFolderPath = null;
+let isListView = false;
 
 // Load settings and folders on startup
 loadViewer();
@@ -11,6 +12,24 @@ async function loadViewer() {
     currentSettings = await ipcRenderer.invoke('get-settings');
     await loadFolders();
 }
+
+// Toggle view button
+document.getElementById('toggleView').addEventListener('click', () => {
+    isListView = !isListView;
+    const grid = document.getElementById('foldersGrid');
+    const btn = document.getElementById('toggleView');
+    const icon = document.getElementById('viewIcon');
+
+    if (isListView) {
+        grid.classList.add('list-view');
+        icon.textContent = '▦';
+        btn.innerHTML = '<span id="viewIcon">▦</span> Grid View';
+    } else {
+        grid.classList.remove('list-view');
+        icon.textContent = '☰';
+        btn.innerHTML = '<span id="viewIcon">☰</span> List View';
+    }
+});
 
 async function loadFolders() {
     const folders = await ipcRenderer.invoke('get-folders', currentSettings.rootFolder);
@@ -39,13 +58,18 @@ function displayFolders(folders) {
         }
 
         card.innerHTML = `
-            <div class="folder-send-icon" title="Send to Etcim">📤</div>
-            <div class="folder-delete-icon" title="Delete folder">×</div>
+            <div class="folder-send-icon" title="Send to Etcim">
+                <img src="assets/icons/toEtcim.svg" alt="Send to Etcim" />
+            </div>
+            <div class="folder-delete-icon" title="Delete folder">
+                <img src="assets/icons/delete_icon.svg" alt="Delete folder" />
+            </div>
             ${thumbnailHtml}
             <div class="folder-card-content">
-                <h3>${escapeHtml(folder.name)}</h3>
-                <div class="folder-info">${folder.imageCount} image(s)</div>
-                <div class="folder-date">${formatDate(folder.created)}</div>
+                <div class="folder-title-row">
+                    <h3>${escapeHtml(folder.name)}</h3>
+                    <span class="folder-meta">${folder.imageCount} image(s) • ${formatDate(folder.created)}</span>
+                </div>
             </div>
         `;
 
@@ -84,7 +108,26 @@ function displayFolders(folders) {
 
 async function openFolder(folder) {
     currentFolderPath = folder.path;
-    const { images, description } = await ipcRenderer.invoke('get-folder-images', folder.path);
+    const fs = require('fs').promises;
+
+    // Get all files in folder, not just images
+    const files = await fs.readdir(folder.path);
+    const fileStats = [];
+
+    for (const file of files) {
+        if (file === 'description.txt') continue; // Skip description file
+        const filePath = path.join(folder.path, file);
+        const stats = await fs.stat(filePath);
+        fileStats.push({
+            name: file,
+            path: filePath,
+            created: stats.birthtime,
+            ext: path.extname(file).toLowerCase()
+        });
+    }
+
+    // Sort by creation date, oldest first (so original comes before pages)
+    fileStats.sort((a, b) => a.created - b.created);
 
     // Switch views
     document.getElementById('foldersView').style.display = 'none';
@@ -95,38 +138,85 @@ async function openFolder(folder) {
 
     // Show description if exists
     const descBox = document.getElementById('descriptionBox');
-    if (description) {
+    try {
+        const descPath = path.join(folder.path, 'description.txt');
+        const description = await fs.readFile(descPath, 'utf-8');
         descBox.textContent = description;
         descBox.style.display = 'block';
-    } else {
+    } catch {
         descBox.style.display = 'none';
     }
 
-    // Display images
-    displayImages(images);
+    // Display files
+    displayFiles(fileStats);
 }
 
-function displayImages(images) {
+function getFileIcon(ext) {
+    const icons = {
+        '.png': '🖼️',
+        '.jpg': '🖼️',
+        '.jpeg': '🖼️',
+        '.pdf': '📄',
+        '.doc': '📝',
+        '.docx': '📝',
+        '.xls': '📊',
+        '.xlsx': '📊',
+        '.ppt': '📊',
+        '.pptx': '📊'
+    };
+    return icons[ext] || '📎';
+}
+
+function isImageFile(ext) {
+    return ['.png', '.jpg', '.jpeg'].includes(ext);
+}
+
+function displayFiles(files) {
     const grid = document.getElementById('imagesGrid');
     grid.innerHTML = '';
 
-    if (images.length === 0) {
-        grid.innerHTML = '<p style="color: #666; text-align: center; grid-column: 1 / -1;">No images in this folder.</p>';
+    if (files.length === 0) {
+        grid.innerHTML = '<p style="color: #666; text-align: center; grid-column: 1 / -1;">No files in this folder.</p>';
         return;
     }
 
-    images.forEach(image => {
+    files.forEach(file => {
         const card = document.createElement('div');
         card.className = 'image-card';
-        card.innerHTML = `
-            <img src="file:///${image.path.replace(/\\/g, '/')}" alt="${image.name}">
-            <div class="image-info">
-                <div class="image-name" title="${image.name}">${escapeHtml(image.name)}</div>
-            </div>
-        `;
-        card.addEventListener('click', () => openImageModal(image.path));
+
+        if (isImageFile(file.ext)) {
+            // Image files show thumbnail
+            card.innerHTML = `
+                <img src="file:///${file.path.replace(/\\/g, '/')}" alt="${file.name}">
+                <div class="image-info">
+                    <div class="image-name" title="${file.name}">${escapeHtml(file.name)}</div>
+                </div>
+            `;
+            card.addEventListener('click', () => openImageModal(file.path));
+        } else {
+            // Non-image files show icon
+            card.innerHTML = `
+                <div class="file-icon-preview">
+                    <div class="file-type-icon">${getFileIcon(file.ext)}</div>
+                    <div class="file-type-label">${file.ext.substring(1).toUpperCase()}</div>
+                </div>
+                <div class="image-info">
+                    <div class="image-name" title="${file.name}">${escapeHtml(file.name)}</div>
+                </div>
+            `;
+            card.addEventListener('click', () => openFile(file.path));
+        }
+
         grid.appendChild(card);
     });
+}
+
+async function openFile(filePath) {
+    try {
+        await ipcRenderer.invoke('open-image-external', filePath);
+    } catch (error) {
+        alert('Error opening file: ' + error.message);
+    }
 }
 
 function openImageModal(imagePath) {
@@ -196,17 +286,50 @@ async function sendFolderToEtcim(folder) {
         // Save to etcim.json in root folder (overwrites)
         const result = await ipcRenderer.invoke('save-etcim-json', etcimData);
         console.log('Send to ETCIM20 result:', result);
-        alert(`File: ${result.path}\n\nPowerShell output:\n${result.psOutput}`);
+
+        // Show brief success message
+        showToast('Doorgestuurd naar ETCIM');
     } catch (error) {
         console.error('Error sending to Etcim:', error);
-        alert('Error sending to Etcim: ' + error.message);
+        showToast('Fout bij doorsturen naar ETCIM', 'error');
+    }
+}
+
+function showToast(message, type = 'success') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Show toast
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Hide and remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+async function openCurrentFolder() {
+    if (!currentFolderPath) return;
+
+    try {
+        await ipcRenderer.invoke('open-folder', currentFolderPath);
+    } catch (error) {
+        alert('Error opening folder: ' + error.message);
     }
 }
 
 // Event listeners
 document.getElementById('refreshFolders').addEventListener('click', loadFolders);
 document.getElementById('backToFolders').addEventListener('click', backToFolders);
-document.getElementById('deleteFolder').addEventListener('click', deleteCurrentFolder);
+document.getElementById('openFolder').addEventListener('click', openCurrentFolder);
+document.getElementById('processFolder').addEventListener('click', () => {
+    // TODO: Add process functionality
+    console.log('Process folder clicked');
+});
 document.getElementById('closeModal').addEventListener('click', closeImageModal);
 document.getElementById('imageModal').addEventListener('click', (e) => {
     if (e.target.id === 'imageModal') {

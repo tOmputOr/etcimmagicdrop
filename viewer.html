@@ -12,7 +12,15 @@
         <div id="foldersView">
             <div class="viewer-header">
                 <h1>Recent Folders</h1>
-                <button id="refreshFolders" class="btn-primary">Refresh</button>
+                <div class="header-buttons">
+                    <button id="toggleView" class="btn-primary">
+                        <span id="viewIcon">☰</span> List View
+                    </button>
+                    <button id="refreshFolders" class="btn-primary">
+                        <img src="assets/icons/refresh_icon.svg" alt="Refresh" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px; filter: brightness(0) invert(1);" />
+                        Refresh
+                    </button>
+                </div>
             </div>
             <div id="foldersGrid" class="folders-grid"></div>
         </div>
@@ -21,8 +29,12 @@
         <div id="imagesView" class="images-view">
             <div class="images-header">
                 <button id="backToFolders" class="back-btn">← Back to Folders</button>
-                <div>
-                    <button id="deleteFolder" class="delete-btn">Delete Folder</button>
+                <div class="header-buttons">
+                    <button id="processFolder" class="btn-primary">
+                        <img src="assets/icons/illusion_icon.svg" alt="Process" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px; filter: brightness(0) invert(1);" />
+                        Process
+                    </button>
+                    <button id="openFolder" class="btn-primary">Open Folder</button>
                 </div>
             </div>
             <h2 id="folderName"></h2>
@@ -32,7 +44,9 @@
 
         <!-- Image Modal -->
         <div id="imageModal" class="modal">
-            <div class="modal-close" id="closeModal">×</div>
+            <div class="modal-close" id="closeModal">
+                <img src="assets/icons/close_icon.svg" alt="Close" style="width: 20px; height: 20px; filter: brightness(0) invert(1);" />
+            </div>
             <img id="modalImage" src="" alt="Full size image">
         </div>
     </div>

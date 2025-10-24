@@ -44,6 +44,15 @@ document.getElementById('selectFolder').addEventListener('click', async () => {
     }
 });
 
+document.getElementById('openFolder').addEventListener('click', async () => {
+    const folderPath = document.getElementById('rootFolder').value;
+    if (folderPath) {
+        await ipcRenderer.invoke('open-folder', folderPath);
+    } else {
+        showStatus('No folder selected', 'error');
+    }
+});
+
 document.getElementById('saveSettings').addEventListener('click', async () => {
     const settings = {
         rootFolder: document.getElementById('rootFolder').value,

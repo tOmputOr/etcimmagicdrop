@@ -127,6 +127,7 @@ h2 {
     cursor: pointer;
     margin-bottom: 30px;
     background: rgba(220, 20, 60, 0.2);
+    position: relative;
 }
 
 .dropzone:hover {
@@ -162,6 +163,39 @@ h2 {
     font-size: 12px;
     color: rgba(255, 255, 255, 0.7);
     font-family: Arial, sans-serif;
+}
+
+.drop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(220, 20, 60, 0.95);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.drop-overlay h2 {
+    color: white;
+    font-size: 48px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 .paste-clipboard-btn {
@@ -228,6 +262,20 @@ button:active {
     background: linear-gradient(135deg, #B22222 0%, #DC143C 100%);
     color: white;
     grid-column: 1 / -1;
+}
+
+/* Gray buttons for viewer and settings */
+.viewer-container .btn-primary,
+.settings-section .btn-primary,
+.settings-section .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.viewer-container .btn-primary:hover,
+.settings-section .btn-primary:hover,
+.settings-section .btn-secondary:hover {
+    background: #5a6268;
 }
 
 .btn-secondary {
@@ -308,6 +356,53 @@ body:has(.viewer-container) {
     margin-bottom: 30px;
 }
 
+.folders-grid.list-view {
+    display: block;
+}
+
+.folders-grid.list-view .folder-card {
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 15px;
+    height: auto;
+    align-items: center;
+}
+
+.folders-grid.list-view .folder-thumbnail {
+    display: none;
+}
+
+.folders-grid.list-view .folder-card-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 15px;
+}
+
+.folders-grid.list-view .folder-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 15px;
+    width: 100%;
+}
+
+.folders-grid.list-view .folder-card-content h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.folders-grid.list-view .folder-meta {
+    color: #999;
+    font-size: 14px;
+}
+
+.folders-grid.list-view .folder-send-icon,
+.folders-grid.list-view .folder-delete-icon {
+    position: static;
+    margin: 0 10px;
+    transform: none;
+}
+
 .folder-card {
     background: white;
     border-radius: 15px;
@@ -359,11 +454,16 @@ body:has(.viewer-container) {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 18px;
-    font-weight: bold;
     z-index: 10;
     transition: all 0.3s;
     opacity: 0;
+    padding: 6px;
+}
+
+.folder-delete-icon img {
+    width: 100%;
+    height: 100%;
+    filter: brightness(0) invert(1);
 }
 
 .folder-card:hover .folder-delete-icon {
@@ -388,10 +488,16 @@ body:has(.viewer-container) {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 16px;
     z-index: 10;
     transition: all 0.3s;
     opacity: 0;
+    padding: 6px;
+}
+
+.folder-send-icon img {
+    width: 100%;
+    height: 100%;
+    filter: brightness(0) invert(1);
 }
 
 .folder-card:hover .folder-send-icon {
@@ -483,6 +589,27 @@ body:has(.viewer-container) {
     text-overflow: ellipsis;
 }
 
+.file-icon-preview {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+}
+
+.file-type-icon {
+    font-size: 64px;
+    margin-bottom: 10px;
+}
+
+.file-type-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -511,7 +638,8 @@ body:has(.viewer-container) {
     position: absolute;
     top: 20px;
     right: 20px;
-    background: white;
+    background: rgba(220, 20, 60, 0.9);
+    color: white;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -520,6 +648,12 @@ body:has(.viewer-container) {
     justify-content: center;
     cursor: pointer;
     font-size: 24px;
+    transition: all 0.3s;
+}
+
+.modal-close:hover {
+    background: rgba(220, 20, 60, 1);
+    transform: scale(1.1);
 }
 
 .back-btn {
@@ -534,4 +668,30 @@ body:has(.viewer-container) {
     color: white;
     padding: 10px 20px;
     border-radius: 8px;
+}
+
+.toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #28a745;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.toast-error {
+    background: #dc3545;
 }

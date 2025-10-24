@@ -110,6 +110,31 @@ async function addFolderToStructure(folderPath, folderName, files) {
     lastFiles: files.map(f => path.join(folderPath, f)),
     timestamp: new Date().toISOString()
   });
+
+  // Create Etcim.json in root folder with this folder's content
+  await createEtcimJson(folderEntry);
+}
+
+// Create Etcim.json in root folder
+async function createEtcimJson(folderEntry) {
+  try {
+    const rootFolder = store.get('rootFolder', path.join(app.getPath('documents'), 'ImageDrop'));
+    const etcimPath = path.join(rootFolder, 'Etcim.json');
+
+    // Write Etcim.json with folder content
+    await fs.writeFile(etcimPath, JSON.stringify(folderEntry, null, 2));
+    console.log('Etcim.json created at:', etcimPath);
+
+    // Send Windows message with full path to Etcim.json
+    try {
+      const sendResult = await sendToEtcimWindow(etcimPath);
+      console.log('Sent to ETCIM window:', sendResult);
+    } catch (error) {
+      console.error('Error sending to ETCIM window:', error);
+    }
+  } catch (error) {
+    console.error('Error creating Etcim.json:', error);
+  }
 }
 
 let mainWindow;
@@ -258,6 +283,16 @@ ipcMain.handle('select-folder', async () => {
     return result.filePaths[0];
   }
   return null;
+});
+
+ipcMain.handle('open-folder', async (event, folderPath) => {
+  try {
+    await shell.openPath(folderPath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error opening folder:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('open-settings', () => {
